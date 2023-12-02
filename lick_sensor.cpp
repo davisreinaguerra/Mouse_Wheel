@@ -13,16 +13,3 @@ bool lick_sensor::is_licked(int n_checks) {
   }
   return false;
 }
-
-
-/*
-bool IR_sensor::is_broken() {
-  check1 = !digitalRead(_pin);
-  check2 = !digitalRead(_pin);
-  if (check1 == 1 && check2 == 1) {
-    return true;
-  } else {
-    return false;  
-  }
-}
-*/
