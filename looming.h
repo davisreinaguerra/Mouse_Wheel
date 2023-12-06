@@ -6,6 +6,8 @@
 class looming {
   public:
     looming(int pin); // Constructor
+    void loom_on();
+    void loom_off();
   private:
     int _pin;
 };

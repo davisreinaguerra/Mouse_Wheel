@@ -6,6 +6,7 @@
 class solenoid {
   public:
     solenoid(int pin); // Constructor
+    void valve_on();
     void valve_off();
     void pulse_valve(int reward_duration);
   private:

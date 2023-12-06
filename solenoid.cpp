@@ -7,6 +7,10 @@ solenoid::solenoid(int pin) {
   _pin = pin;
 }
 
+void solenoid::valve_on() {
+  digitalWrite(_pin, HIGH);
+}
+
 void solenoid::valve_off() {
   digitalWrite(_pin, LOW);
 }
