@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 
-char flip_coin(); 
+String flip_coin(); 
 
 
 #endif
