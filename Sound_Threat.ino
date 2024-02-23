@@ -15,40 +15,28 @@
 #define DREQ 3                // VS1053 Data request, ideally an Interrupt pin
 
 // Trigger
-#define trig_pin 9              // Try to use D13 as the trigger pin for all projects, as it is right next to a GND
-
-// MENU Under construction
-//#define MENU_up_button 2
-//#define MENU_down_button 3
-
-// LOUDNESS Under construction
-//#define LOUDNESS_up_button 4
-//#define LOUDNESS_down_button 5
-
-// DELAY Under construction
-//#define DELAY_up_button 6
-//#define DELAY_down_button 7
+#define trig_pin 9
 
 // Variable initializations/configurations
 bool trig_state;
-long timer_updating;
-long timer_start;
-
-// crescendo
-uint8_t crescendo_start_vol = 80;
-uint8_t crescendo_end_vol = 40;
-long crescendo_delay = 5;
 
 // I2C Liquid Crystal Display
 LiquidCrystal_I2C lcd(0x27,20,4);
-String menu_categories[4] = {"sound","loudness","delay","duration"};
+String menu_categories[4] = {"sound","loudness","delay",""};
 String updatable_menu[4] = {"", "", "", ""};
 
 // musicPlayer object
 Adafruit_VS1053_FilePlayer musicPlayer = Adafruit_VS1053_FilePlayer(SHIELD_RESET, SHIELD_CS, SHIELD_DCS, DREQ, CARDCS);
 
-// Manually decide sound name
-String sound_filename = "sweep";
+// Manual Config ________________________________________________________
+String sound_filestring = "sweep";
+long volumeL = 60;
+long volumeR = 60;
+long delay_between_trig_and_sound = 0;
+// crescendo
+uint8_t crescendo_start_vol = 80;
+uint8_t crescendo_end_vol = 40;
+long crescendo_delay = 5;
 
 void setup() {
   Serial.begin(9600);
@@ -64,27 +52,27 @@ void setup() {
   // Check for Connections
   if (!musicPlayer.begin()) {while (1);} print_on_line(1, "Music Player Found");
   if (!SD.begin(CARDCS)) {while (1);} print_on_line(2, "SD Card Found");
-
   delay(1000);
 
   // Initialize Menu
   initialize_menu();
-  updatable_menu[0] = String(sound_filename);
+  updatable_menu[0] = String(sound_filestring);
+  updatable_menu[1] = "L: " + volumeL + " R:" + volumeR;
+  updatable_menu[2] = String(delay_between_trig_and_sound);
   update_menu();
-  
-  // Set up interrupt
-  musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);  // DREQ int
 
   // Show the available files
-  printDirectory(SD.open("/"), 0);
-  
+  //printDirectory(SD.open("/"), 0);
+
+  /*
   for(uint8_t i = crescendo_start_vol; i > crescendo_end_vol; i--) {
     musicPlayer.setVolume(i, i);
     musicPlayer.startPlayingFile("/white_~1.wav");
     delay(crescendo_delay);
   }
+  */
 
-  musicPlayer.setVolume(90, 90);
+  musicPlayer.setVolume(volumeL, volumeR);
 
 }
 
@@ -92,18 +80,14 @@ void setup() {
 
 void loop() {
 
-  //musicPlayer.playFullFile("/white_~3.wav");
-  //delay(3000);
-
   trig_state = digitalRead(trig_pin);
   Serial.println(trig_state);
 
   switch (trig_state) {
     case LOW:
-      Serial.println("Waiting...");
       break;
     case HIGH:
-      Serial.println("Playing...");
+      delay(delay_between_trig_and_sound);
       musicPlayer.playFullFile("/sweep_~1.wav");
       break;
   }
