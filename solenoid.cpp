@@ -15,8 +15,8 @@ void solenoid::valve_off() {
   digitalWrite(_pin, LOW);
 }
 
-void solenoid::pulse_valve(int reward_duration) {
+void solenoid::pulse_valve(int duration) {
   digitalWrite(_pin, HIGH);
-  delay(reward_duration);
+  delay(duration);
   digitalWrite(_pin, LOW);
 }

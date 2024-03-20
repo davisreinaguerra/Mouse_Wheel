@@ -14,3 +14,7 @@ void alignment::align_onset() {
 void alignment::align_offset() {
   digitalWrite(_pin, LOW);
 }
+
+void alignment:: align_shunt(bool what_to_shunt) {
+  digitalWrite(_pin, what_to_shunt);
+}

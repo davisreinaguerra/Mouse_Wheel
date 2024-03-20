@@ -4,6 +4,7 @@
 #include "Arduino.h"
 
 String flip_coin(); 
+bool enforce_prob(int prob);
 
 
 #endif
