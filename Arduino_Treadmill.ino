@@ -18,8 +18,8 @@ looming looming(8);              // D8   basic trigger using NPN on MatrixPortal
 LED left_LED(9);                 // D9   Green LED wire (left mouse perspective)
 LED right_LED(10);               // D10  Yellow LED wire (right mouse perspective)
 lick_sensor lick(11);            // D11  Wired to cap sensor
-solenoid reward_solenoid(12);    // D12  
-solenoid airpuff_solenoid(13);   // D13  
+solenoid reward_solenoid(12);    // D12  reward
+solenoid airpuff_solenoid(13);   // D13  airpuff
 
 
 //Configuration Struct_________________
@@ -28,7 +28,7 @@ struct configuration {
   int mode;
   String date;
   String animal_code;
-  long total_trials;
+  int total_trials;
   
   // Event Durations
   long reward_duration;
@@ -59,6 +59,7 @@ struct configuration {
 
 //_________Variable Initializations_________________
 bool complete = false;
+String flip;
 int trial_number = 0;
 String coinflip = flip_coin();
 long reward_counter = 0;
@@ -66,9 +67,6 @@ long latency_to_lick;
 long experiment_start_time;
 long trial_start_time;
 int begin_qm;
-
-// timer functionality
-long timer_start;
 long time_elapsed;
 
 //_________LCD_Screen_______________________________
@@ -84,7 +82,7 @@ String updatable_menu[4] = {"", "", "", ""};
 
 void setup() {
   // Set up serial port
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.flush();
 
   // Initialize LCD Screen_____________________
@@ -101,6 +99,7 @@ void setup() {
   //configuration.animal_code = read_config();
   //configuration.reward_duration = read_config();
   configuration.reward_prob = read_config();
+  configuration.total_trials = read_config();
   begin_qm = read_config();
 
   // Manual Setup______________________________
@@ -113,20 +112,21 @@ void setup() {
       // Configure and report parameters
       Serial.println("\nParams: ");
       Serial.println("Mode: Reward/Aversive Probablistic");
-      configuration.total_trials = 50;                    Serial.println("Total Trials: " + String(configuration.total_trials));
-      configuration.intertrial_interval = 5000;           Serial.println("Intertrial Interval: " + String(configuration.intertrial_interval));
-      configuration.reward_duration = 45;                 Serial.println("Reward Duration: " + String(configuration.reward_duration));
-      //configuration.loom_duration = 1000;                 Serial.println("Loom Duration: " + String(configuration.loom_duration));
-      configuration.puff_duration = 200;                  Serial.println("Puff Duration: " + String(configuration.puff_duration));
-                                                          Serial.println("Reward Probability: " + String(configuration.reward_prob));
-                                                          Serial.println("Loom Probability: " + String(100 - configuration.reward_prob));                                                    
-      configuration.cue_to_event_delay = 5000;            Serial.println("Cue to Event Delay: " + String(configuration.cue_to_event_delay));
+                                                          Serial.print("Total Trials: ");Serial.println(String(configuration.total_trials));
+      configuration.intertrial_interval = 5000;           Serial.print("Intertrial Interval: ");Serial.println(String(configuration.intertrial_interval));
+      configuration.reward_duration = 45;                 Serial.print("Reward Duration: ");Serial.println(String(configuration.reward_duration));
+      configuration.loom_duration = 1000;                 Serial.print("Loom Duration: ");Serial.println(String(configuration.loom_duration));
+      configuration.puff_duration = 200;                  Serial.print("Puff Duration: ");Serial.println(String(configuration.puff_duration));
+                                                          Serial.print("Reward Probability: ");Serial.println(String(configuration.reward_prob));
+                                                          Serial.print("Loom Probability: ");Serial.println(String((100 - configuration.reward_prob)));
+                                                          Serial.print("Puff Probability: ");Serial.println(String((100 - configuration.reward_prob)));                                                    
+      configuration.cue_to_event_delay = 5000;            Serial.print("Cue to Event Delay: ");Serial.println(String(configuration.cue_to_event_delay));
 
       // Report alignment assignment
       Serial.println("\nAlignments: ");
-      Serial.println("Yellow: General Cue/Event (ON: Cue, OFF:Event)");
+      Serial.println("Yellow: Loom (ON: Right Cue, OFF: Loom)");
       Serial.println("Blue: Reward (ON: Left Cue, OFF: Reward)");
-      Serial.println("Black: Aversion (ON: Right Cue, OFF: Aversion)");
+      Serial.println("Black: Puff (ON: Right Cue, OFF: Puff)");
       Serial.println("Green: Licks");
 
       // Set up Menu 
@@ -220,7 +220,6 @@ void loop() {
         case true: // Reward Case
           right_LED.LED_on();                                                                             // Turn on right LED
           align_blue.align_onset();                                                                       // Align_on to right LED
-          align_yellow.align_onset();                                                                     // Align_on to general cue presentation                                              
           
           time_elapsed = 0;                                                               
           while(time_elapsed < configuration.cue_to_event_delay) {                                        // While you enforce the cue to event delay:                
@@ -229,29 +228,46 @@ void loop() {
           }   
           
           align_blue.align_offset();                                                                      // Align_off to reward delivery
-          align_yellow.align_offset();                                                                    // Align off to general event
-          Serial.println(":) Reward Delivered at t = " + String(millis() - trial_start_time) + "ms");     // Report Reward Delivery
+          //Serial.println(":) Reward Delivered at t = " + String(millis() - trial_start_time) + "ms");     // Report Reward Delivery
           reward_solenoid.pulse_valve(configuration.reward_duration);                                     // Deliver reward
           right_LED.LED_off();                                                                            // Turn Off right LED
           break;
 
         case false: // Aversive Case                                                                          
           
-          left_LED.LED_on();                                                                              // Turn on left LED
-          align_black.align_onset();                                                                      // Align_on to left LED                                                 
-          align_yellow.align_onset();                                                                     // Align_on to general cue
-          
-          time_elapsed = 0;                                                                               
-          while(time_elapsed < configuration.cue_to_event_delay) {                                        // While you enforce the cue to event delay:                
-            align_green.align_shunt(lick.is_licked(5));                                                   //    Shunt lick sensor state to Green alignment
-            time_elapsed = millis() - trial_start_time;                                                   
-          }
-             
-          align_black.align_offset();                                                                     // Align_off to aversion presentation
-          align_yellow.align_offset();                                                                    // Align_off to general event
-          Serial.println(":( Aversion Delivered at t = " + String(millis() - trial_start_time) + "ms");   // Report Aversion
-          //looming.loom_on(); delay(configuration.loom_duration); looming.loom_off();                    // Present Loom
-          airpuff_solenoid.pulse_valve(configuration.puff_duration);                                     // Present Puff
+          left_LED.LED_on();
+          flip = flip_coin();
+          if (flip == "H") { // Puff
+            align_black.align_onset();     
+
+            // Wait for event
+            time_elapsed = 0;                                                                               
+            while(time_elapsed < configuration.cue_to_event_delay) {                                        // While you enforce the cue to event delay:                
+              align_green.align_shunt(lick.is_licked(5));                                                   //    Shunt lick sensor state to Green alignment
+              time_elapsed = millis() - trial_start_time;                                                   
+            }   
+
+            // Puff
+            //Serial.println(":( Puff Delivered at t = " + String(millis() - trial_start_time) + "ms");   // Report Aversion
+            align_black.align_offset();   
+            airpuff_solenoid.pulse_valve(configuration.puff_duration);   
+
+          };
+          if (flip == "T") { // Loom
+            align_yellow.align_onset();
+
+            // Wait for event
+            time_elapsed = 0;                                                                               
+            while(time_elapsed < configuration.cue_to_event_delay) {                                        // While you enforce the cue to event delay:                
+              align_green.align_shunt(lick.is_licked(5));                                                   //    Shunt lick sensor state to Green alignment
+              time_elapsed = millis() - trial_start_time;                                                   
+            }   
+
+            // Loom
+            //Serial.println(":( Loom Delivered at t = " + String(millis() - trial_start_time) + "ms");   // Report Aversion
+            align_yellow.align_offset();     
+            looming.loom_on(); delay(configuration.loom_duration); looming.loom_off(); 
+          };
           left_LED.LED_off();                                                                             // Turn off the left LED
           break;
       }
@@ -265,7 +281,7 @@ void loop() {
       // Finalize and initialize next trial _______________________________________________________________________________________________
       delay(configuration.intertrial_interval);                                       // Enforce Intertrial Interval
       trial_number += 1;                                                              // Increment Trials
-      Serial.println("\n$ Trial#: " + String(trial_number));                          // Report Trial Increment     
+      //Serial.println("\n$ Trial#: " + String(trial_number));                          // Report Trial Increment     
       updatable_menu[1] = String(trial_number); update_menu();                        // Update Trial Number                                                                          
       trial_start_time = millis();      
 
